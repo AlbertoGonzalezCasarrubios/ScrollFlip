@@ -29,6 +29,9 @@ enum L: CaseIterable {
     // Try tab
     case tryTitle, tryIntro, mouse, trackpad, noMovement, cardCaption
     case badgeInverted, badgeSpeed, badgeUnchanged, row, scrollHere, privacyNote
+    // Side buttons
+    case sectionButtons, sideButtonsToggle, swapButtons, sideButtonsNote, sideButtonsPrivacy
+    case tryButtonsTitle, tryButtonsIntro, tryBack, tryForward, countdown, tryButtonsDisabled
     // Language tab
     case languageTitle, languageSystem, languageNote
 
@@ -91,6 +94,24 @@ enum L: CaseIterable {
             return ("Los eventos solo se muestran mientras esta ventana está abierta. No se guardan y no salen de tu Mac.",
                     "Events are only shown while this window is open. They are not stored and never leave your Mac.")
 
+        case .sectionButtons: return ("Botones laterales", "Side buttons")
+        case .sideButtonsToggle: return ("Botones 4 y 5: Atrás / Adelante", "Buttons 4 and 5: Back / Forward")
+        case .swapButtons: return ("Intercambiar botones", "Swap buttons")
+        case .sideButtonsNote:
+            return ("En Safari, Finder y otras apps de Apple se simula el gesto de deslizar entre páginas. Chrome, VS Code y similares ya entienden estos botones, así que los reciben tal cual.",
+                    "In Safari, Finder and other Apple apps the swipe-between-pages gesture is simulated. Chrome, VS Code and similar apps already understand these buttons, so they receive them unchanged.")
+        case .sideButtonsPrivacy:
+            return ("Al activarlo, ScrollFlip también recibe los clics de los botones extra del ratón (nunca el izquierdo ni el derecho).",
+                    "When on, ScrollFlip also receives clicks from the extra mouse buttons (never left or right clicks).")
+        case .tryButtonsTitle: return ("Atrás / Adelante sin botones laterales", "Back / Forward without side buttons")
+        case .tryButtonsIntro:
+            return ("Pulsa un botón y cambia a Safari o Finder antes de 3 segundos: se simulará un clic del botón lateral.",
+                    "Click a button and switch to Safari or Finder within 3 seconds: a side-button click will be simulated.")
+        case .tryBack: return ("Atrás", "Back")
+        case .tryForward: return ("Adelante", "Forward")
+        case .countdown: return ("Cambia de app…", "Switch apps…")
+        case .tryButtonsDisabled: return ("Activa «Botones 4 y 5» en General para probarlo.",
+                                          "Turn on “Buttons 4 and 5” in General to try it.")
         case .languageTitle: return ("Idioma de la app", "App language")
         case .languageSystem: return ("Igual que el sistema", "Same as system")
         case .languageNote: return ("El cambio se aplica al instante en el menú y en esta ventana.",

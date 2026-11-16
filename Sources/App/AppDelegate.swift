@@ -12,6 +12,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     private var iconSubscription: AnyCancellable?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        state.sideButtons.frontmostBundleID = { NSWorkspace.shared.frontmostApplication?.bundleIdentifier }
+
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         let image = NSImage(systemSymbolName: "computermouse", accessibilityDescription: "ScrollFlip")
         image?.isTemplate = true
@@ -69,7 +71,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         if !inverter.ensureRunning() {
             state.permissionGranted = false
             waitForPermission()
+            return
         }
+        if state.sideButtonsEnabled { _ = state.sideButtons.ensureRunning() }
     }
 
     // MARK: - Menu (rebuilt every time it opens, so it always reflects the real state)

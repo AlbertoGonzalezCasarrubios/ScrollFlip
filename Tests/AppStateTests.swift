@@ -35,6 +35,8 @@ func appStateTests() {
             expectEqual(state.speed, AppState.defaultSpeed, "speed")
             expectEqual(state.language, .system, "language")
             expectEqual(state.launchAtLogin, false, "launchAtLogin")
+            expectEqual(state.sideButtonsEnabled, false, "side buttons off by default")
+            expectEqual(state.sideButtons.isRunning, false, "no button tap by default")
             expectEqual(inverter.speed, AppState.defaultSpeed, "inverter speed synced")
         }
     }
@@ -61,6 +63,7 @@ func appStateTests() {
             first.invertHorizontal = true
             first.speed = 1.5
             first.language = .english
+            first.swapSideButtons = true
 
             let inverter = ScrollInverter()
             let relaunched = AppState(inverter: inverter, defaults: defaults, loginItem: FakeLoginItem())
@@ -68,6 +71,8 @@ func appStateTests() {
             expectEqual(relaunched.invertHorizontal, true, "invertHorizontal")
             expectEqual(relaunched.speed, 1.5, "speed")
             expectEqual(relaunched.language, .english, "language")
+            expectEqual(relaunched.swapSideButtons, true, "swapSideButtons")
+            expectEqual(relaunched.sideButtons.swapButtons, true, "mapper synced on launch")
             expectEqual(inverter.isEnabled, false, "inverter synced on launch")
             expectEqual(inverter.speed, 1.5, "inverter speed synced on launch")
         }
@@ -117,6 +122,16 @@ func appStateTests() {
             expectEqual(state.trackpadTick, 1, "trackpad tick")
             state.clearSamples()
             expect(state.mouseSample == nil && state.trackpadSample == nil, "cleared")
+        }
+    }
+
+    test("side-button tap never starts without permission") {
+        withTemporaryDefaults { defaults in
+            let state = AppState(inverter: ScrollInverter(), defaults: defaults, loginItem: FakeLoginItem())
+            state.sideButtonsEnabled = true
+            expectEqual(state.sideButtons.isRunning, false, "permission not granted yet")
+            state.sideButtonsEnabled = false
+            expectEqual(state.sideButtons.isRunning, false, "turned off")
         }
     }
 

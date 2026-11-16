@@ -30,7 +30,7 @@ struct SettingsView: View {
             }
         }
         .padding(16)
-        .frame(width: 560, height: 580)
+        .frame(width: 560, height: 680)
     }
 }
 
@@ -92,6 +92,19 @@ private struct GeneralTab: View {
                 .padding(.vertical, 4)
             }
 
+            Section(state.t(.sectionButtons)) {
+                Toggle(state.t(.sideButtonsToggle), isOn: $state.sideButtonsEnabled)
+                Toggle(state.t(.swapButtons), isOn: $state.swapSideButtons)
+                    .disabled(!state.sideButtonsEnabled)
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(state.t(.sideButtonsNote))
+                    Label(state.t(.sideButtonsPrivacy), systemImage: "lock.shield")
+                }
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            }
+
             Section(state.t(.sectionStartup)) {
                 Toggle(state.t(.launchAtLogin), isOn: Binding(
                     get: { state.launchAtLogin },
@@ -147,12 +160,59 @@ private struct TryTab: View {
             .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.secondary.opacity(0.25)))
             .clipShape(RoundedRectangle(cornerRadius: 10))
 
+            SideButtonTrial(state: state)
+
             Label(state.t(.privacyNote), systemImage: "lock.shield")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .padding(16)
+    }
+}
+
+/// Lets people without side buttons check Back/Forward: after a countdown
+/// (time to switch to Safari or Finder) it posts a synthetic button 4/5 click.
+private struct SideButtonTrial: View {
+    @ObservedObject var state: AppState
+    @State private var countdown: Int?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(state.t(.tryButtonsTitle)).font(.headline)
+            HStack(spacing: 10) {
+                Button { start(.back) } label: { Label(state.t(.tryBack), systemImage: "chevron.left") }
+                Button { start(.forward) } label: { Label(state.t(.tryForward), systemImage: "chevron.right") }
+                if let countdown {
+                    Text("\(state.t(.countdown)) \(countdown)")
+                        .monospacedDigit()
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .disabled(!state.sideButtonsEnabled || !state.permissionGranted || countdown != nil)
+            Text(state.sideButtonsEnabled ? state.t(.tryButtonsIntro) : state.t(.tryButtonsDisabled))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private func start(_ direction: NavigationDirection) {
+        countdown = 3
+        tick(direction)
+    }
+
+    private func tick(_ direction: NavigationDirection) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+            guard let current = countdown else { return }
+            if current <= 1 {
+                countdown = nil
+                SideButtonMapper.simulateClick(direction)
+            } else {
+                countdown = current - 1
+                tick(direction)
+            }
+        }
     }
 }
 

@@ -3,6 +3,7 @@ import Foundation
 print("ScrollFlip tests")
 
 suite("ScrollInverter", scrollInverterTests)
+suite("SideButtons", sideButtonTests)
 suite("AppState", appStateTests)
 suite("Localization", localizationTests)
 

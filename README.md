@@ -23,6 +23,7 @@ macOS has a single "Natural scrolling" switch, and it applies to both the trackp
 
 - **Mouse only.** The trackpad and the Magic Mouse keep the system behaviour.
 - **Adjustable wheel speed**, from 0.5× to 4×, with the system speed as the default.
+- **Optional Back / Forward on side buttons 4 and 5**, off by default. It works in Safari and Finder, and you can test it without side buttons.
 - **"Try it" tab** that shows live what happens to each scroll event.
 - **English and Spanish UI**, switchable at any time.
 - **Self-healing.** If macOS disables it (after sleep, a user switch, or a revoked permission), it recovers or tells you.
@@ -31,7 +32,7 @@ macOS has a single "Natural scrolling" switch, and it applies to both the trackp
 
 ### Privacy by design
 
-- It only listens to scroll-wheel events. It never sees keystrokes, clicks or pointer movement.
+- It only listens to scroll-wheel events. It never sees keystrokes, left/right clicks or pointer movement. If you turn on the side-button option, it also receives clicks from the *extra* mouse buttons, and only while that option is on.
 - It is sandboxed, with **no network entitlement**, so it cannot connect to the internet.
 - It never stores or logs events.
 - It has no third-party dependencies.
@@ -77,6 +78,25 @@ Click the mouse icon in the menu bar:
 | Open at login | Starts ScrollFlip automatically when you log in. |
 | About ScrollFlip | Shows the version, license and project link. |
 
+The settings window has three tabs:
+
+- **General**: on/off, reversed axes, wheel speed (0.5× to 4×, with a *Reset* button back to the default 1×), side buttons and launch at login.
+- **Try it**: scroll with the mouse and with the trackpad to see the original event, the event apps receive, and whether it was reversed. You can also fire a simulated side-button click, so you can check Back/Forward without a mouse that has side buttons.
+- **Language**: system default, English or Spanish.
+
+### Side buttons (Back / Forward)
+
+Turn on **Buttons 4 and 5: Back / Forward** in *General*. It works per app:
+
+| App | What ScrollFlip does |
+|---|---|
+| Safari, Finder, Preview and other Apple apps, Firefox, Opera | Simulates the trackpad's *swipe between pages* gesture. It doesn't depend on the keyboard layout. |
+| Chrome, Edge, Arc, VS Code and others | Leaves the button alone, because these apps already map buttons 4/5 to Back/Forward. |
+
+*Swap buttons* exchanges Back and Forward, for mice that label them the other way round.
+
+### Natural scrolling
+
 Set "Natural scrolling" in System Settings to whatever you like for the trackpad. ScrollFlip only fixes the mouse. All settings are saved immediately and restored on the next launch.
 
 > If you run another app that does the same thing (Scroll Reverser, Mos, LinearMouse, Mouse Glide…), quit it. If both reverse the wheel, they cancel each other out.
@@ -98,6 +118,8 @@ Then grant the permission again. If you build from source and `build.sh` printed
 
 - **Free-spinning "smooth" wheels** (some Logitech MX mice) can send continuous events, like a trackpad. ScrollFlip leaves them unchanged.
 - **The Magic Mouse is treated as a trackpad**, because it also sends continuous events. This is usually what you want.
+- **Back/Forward does not work in a few Apple apps** that ignore the swipe gesture, such as System Settings and the App Store. It also does nothing in apps that understand neither the gesture nor buttons 4/5.
+- **The swipe gesture uses undocumented event fields**, the same ones LinearMouse, Mac Mouse Fix and SensibleSideButtons use. A future macOS could change them.
 - **Speeds below 1×** are fully smooth in apps that use pixel deltas, which covers most modern apps. Apps that only read whole lines still move at least one line per notch.
 
 ## Development

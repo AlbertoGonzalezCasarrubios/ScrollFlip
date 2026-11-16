@@ -8,6 +8,7 @@ ScrollFlip is a menu-bar AppKit app, and its settings window is SwiftUI. There i
 Sources/
   Core/                    Logic, no UI. Compiled into both the app and the tests.
     ScrollInverter.swift   CGEventTap: detects mouse-wheel events, reverses and scales them
+    SideButtons.swift      Optional tap for buttons 4/5 → Back/Forward (swipe gesture)
     AppState.swift         Settings (UserDefaults), launch at login, live demo samples
     Localization.swift     Language enum and every UI string (es / en)
   App/                     UI and entry point. Compiled only into the app.
@@ -44,6 +45,7 @@ flowchart LR
     subgraph Core
         State["AppState<br/>ObservableObject"]
         Inverter["ScrollInverter<br/>(CGEventTap)"]
+        Buttons["SideButtonMapper<br/>(CGEventTap, optional)"]
         Strings["Localization"]
     end
 
@@ -54,9 +56,11 @@ flowchart LR
     Window -- "bindings" --> State
     State -- "didSet: persist" --> Defaults
     State -- "didSet: push settings" --> Inverter
+    State -- "start / stop tap" --> Buttons
     State --> Login
     State --> Strings
     Health -- "ensureRunning()" --> Inverter
+    Health -- "ensureRunning()" --> Buttons
     Inverter -. "ScrollSample<br/>(only while window is open)" .-> State
     State -- "@Published" --> Window
 ```
@@ -103,6 +107,28 @@ Each axis has three delta fields that apps read differently:
 `ScrollInverter.scale` first reads all three fields, then writes them all multiplied by the factor. Writing one field can make the system recompute the others, which is why the reads come first. The integer fields go through `scaled()`, which rounds but never turns a real movement into 0. Otherwise slow speeds would swallow notches.
 
 When the factor is exactly 1 (not reversed, default speed), the event is not touched at all.
+
+## Side buttons → Back / Forward
+
+Simulating `⌘[` / `⌘]` breaks on non-US keyboard layouts, where `[` and `]` are not on the same keys. Instead, ScrollFlip follows the approach of LinearMouse and Mac Mouse Fix: it chooses a strategy per frontmost app.
+
+```mermaid
+flowchart TD
+    Btn["otherMouseDown / Up"] --> N{"button 3 or 4?<br/>(0-based: 4th / 5th)"}
+    N -- no --> Pass["pass through"]
+    N -- yes --> D{"down or up?"}
+    D -- up --> U{"was its down<br/>swallowed?"}
+    U -- yes --> Eat["swallow"]
+    U -- no --> Pass
+    D -- down --> S{"NavigationStrategy<br/>for frontmost app"}
+    S -- ".passThrough<br/>(Chrome, VS Code…)" --> Pass
+    S -- ".swipe<br/>(com.apple.*, Firefox, Opera)" --> G["post swipe gesture<br/>began + ended"] --> Eat
+```
+
+- **Separate tap.** `SideButtonMapper` has its own event tap with a mask of only `otherMouseDown | otherMouseUp`. It exists only while the option is on and the permission is granted (`AppState.applySideButtons()`). With the option off, the process receives no button events at all.
+- **Pure decision logic.** The logic is in `decide(button:isDown:bundleID:)`. The frontmost app and the action are injected closures, so the tests drive it without AppKit or real events.
+- **The swipe gesture.** A gesture event (type 29) with the undocumented fields 110 = 16 (navigation swipe), 132 = phase (1 began, 4 ended) and 115 = direction (4 left = Back, 8 right = Forward, only on the ended event). It is posted to the HID event tap. These are the values SensibleSideButtons uses.
+- **Testing without side buttons.** `simulateClick(_:)` posts a synthetic button 4/5 click at the pointer. It goes through the same tap and the same logic as a physical button. The *Try it* tab uses it after a 3-second countdown, which gives you time to switch to Safari or Finder.
 
 ## Permission and self-healing
 
@@ -155,12 +181,13 @@ The tap's run-loop source is added to the **main** run loop. The tap callback, t
 
 XCTest is not shipped with the Command Line Tools, and the project deliberately has no SwiftPM package. Instead, `scripts/test.sh` compiles `Sources/Core` together with `Tests/` into one executable. `Tests/TestKit.swift` is a 50-line runner providing `suite`, `test`, `expect` and `expectEqual`. The process exits with code 1 if any test fails, which is what CI checks.
 
-The key trick is that `CGEvent(scrollWheelEvent2Source:…)` creates real scroll events **without any permission**. The tests feed them straight to `ScrollInverter.process(_:)` and inspect the delta fields afterwards.
+The key trick is that `CGEvent(scrollWheelEvent2Source:…)` creates real scroll events **without any permission**. The same applies to gesture events. The tests feed them straight to `ScrollInverter.process(_:)` and inspect the delta fields afterwards.
 
 | Suite | What it covers |
 |---|---|
 | ScrollInverter | reversal on all three fields, trackpad untouched, disabled / default no-ops, horizontal axis, speed scaling, rounding never yields 0, demo observer |
-| AppState | defaults, settings pushed to the inverter, persistence across relaunch, corrupted values, first-launch flag, launch-at-login success and failure, demo samples |
+| SideButtons | per-app strategy, button mapping and swap, swallowing the matching button-up, pass-through for other buttons and apps, swipe event fields |
+| AppState | defaults, side-button tap never started without permission, settings pushed to the inverter, persistence across relaunch, corrupted values, first-launch flag, launch-at-login success and failure, demo samples |
 | Localization | every string in both languages, language resolution, stable persisted raw values |
 
 ## CI and releases
@@ -181,6 +208,7 @@ Both workflows run on `macos-15` GitHub runners. Release builds are ad-hoc signe
 | Measure | Effect |
 |---|---|
 | Event mask = `scrollWheel` only | The process never receives keys, clicks or pointer movement. |
+| Side-button tap is opt-in | Only `otherMouseDown/Up`, created only while the option is on. Left/right clicks are never seen. |
 | `app-sandbox`, no `network.client` | The OS blocks all network connections. The About link opens in the user's browser, not in the app. |
 | No third-party code | Only Apple frameworks: AppKit, SwiftUI, Combine, CoreGraphics, ServiceManagement. |
 | No event persistence | Only five preferences go to `UserDefaults`. Demo samples live in memory while the window is open. |
