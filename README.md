@@ -22,7 +22,7 @@ macOS has a single "Natural scrolling" switch, and it applies to both the trackp
 ## Install
 
 ```bash
-git clone <repo-url>
+git clone https://github.com/AlbertoGonzalezCasarrubios/ScrollFlip.git
 cd ScrollFlip
 scripts/create-signing-cert.sh   # once: creates a local signing certificate
 ./build.sh install               # builds, copies to /Applications and launches
