@@ -1,0 +1,38 @@
+name: Release
+
+# Push a tag like v1.0.0 to build, test and publish a GitHub release.
+# The tag must match CFBundleShortVersionString in Resources/Info.plist.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check that the tag matches Info.plist
+        run: |
+          VERSION=$(/usr/libexec/PlistBuddy -c "Print CFBundleShortVersionString" Resources/Info.plist)
+          if [[ "v$VERSION" != "$GITHUB_REF_NAME" ]]; then
+            echo "Tag $GITHUB_REF_NAME does not match Info.plist version $VERSION"
+            exit 1
+          fi
+
+      - name: Run tests
+        run: bash scripts/test.sh
+
+      - name: Build and zip
+        run: bash build.sh zip
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" build/ScrollFlip.zip \
+            --title "ScrollFlip $GITHUB_REF_NAME" \
+            --notes-file .github/release-notes.md

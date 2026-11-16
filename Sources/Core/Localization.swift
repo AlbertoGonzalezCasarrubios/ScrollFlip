@@ -16,11 +16,11 @@ enum Language: String, CaseIterable, Identifiable {
 }
 
 /// All user-facing strings. Adding a language = adding one column here.
-enum L {
+enum L: CaseIterable {
     // Menu
     case statusActive, statusPaused, statusNoPermission
     case menuSettings, menuOpenAccessibility, enabled, invertVertical, invertHorizontal
-    case launchAtLogin, quit
+    case launchAtLogin, about, aboutTagline, quit
     // Window: tabs and banners
     case tabGeneral, tabTry, tabLanguage
     case permissionBanner, openSettings, pausedBanner, enable
@@ -48,6 +48,9 @@ enum L {
         case .invertVertical: return ("Invertir vertical", "Reverse vertical")
         case .invertHorizontal: return ("Invertir horizontal", "Reverse horizontal")
         case .launchAtLogin: return ("Abrir al iniciar sesión", "Open at login")
+        case .about: return ("Acerca de ScrollFlip", "About ScrollFlip")
+        case .aboutTagline: return ("Invierte la rueda del ratón sin tocar el trackpad.",
+                                    "Reverses the mouse wheel without touching the trackpad.")
         case .quit: return ("Salir de ScrollFlip", "Quit ScrollFlip")
 
         case .tabGeneral: return ("General", "General")

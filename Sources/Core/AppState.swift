@@ -1,6 +1,21 @@
 import Foundation
 import ServiceManagement
 
+enum SettingsTab: Hashable { case general, tryIt, language }
+
+/// Abstraction over SMAppService so tests don't touch the real login items.
+protocol LoginItemControlling {
+    var isEnabled: Bool { get }
+    func register() throws
+    func unregister() throws
+}
+
+struct SystemLoginItem: LoginItemControlling {
+    var isEnabled: Bool { SMAppService.mainApp.status == .enabled }
+    func register() throws { try SMAppService.mainApp.register() }
+    func unregister() throws { try SMAppService.mainApp.unregister() }
+}
+
 /// Single source of truth for settings. Persists to UserDefaults and pushes
 /// every change to the ScrollInverter. Also holds the live demo samples.
 final class AppState: ObservableObject {
@@ -8,9 +23,10 @@ final class AppState: ObservableObject {
     static let defaultSpeed: Double = 1
 
     let inverter: ScrollInverter
-    private let defaults = UserDefaults.standard
+    private let defaults: UserDefaults
+    private let loginItem: LoginItemControlling
 
-    private enum Key {
+    enum Key {
         static let enabled = "enabled"
         static let vertical = "invertVertical"
         static let horizontal = "invertHorizontal"
@@ -46,8 +62,12 @@ final class AppState: ObservableObject {
     @Published var mouseTick = 0
     @Published var trackpadTick = 0
 
-    init(inverter: ScrollInverter) {
+    init(inverter: ScrollInverter,
+         defaults: UserDefaults = .standard,
+         loginItem: LoginItemControlling = SystemLoginItem()) {
         self.inverter = inverter
+        self.defaults = defaults
+        self.loginItem = loginItem
         defaults.register(defaults: [
             Key.enabled: true,
             Key.vertical: true,
@@ -82,12 +102,12 @@ final class AppState: ObservableObject {
     // MARK: Launch at login
 
     func refreshLaunchAtLogin() {
-        launchAtLogin = SMAppService.mainApp.status == .enabled
+        launchAtLogin = loginItem.isEnabled
     }
 
     func setLaunchAtLogin(_ on: Bool) {
         do {
-            if on { try SMAppService.mainApp.register() } else { try SMAppService.mainApp.unregister() }
+            if on { try loginItem.register() } else { try loginItem.unregister() }
             loginItemError = false
         } catch {
             loginItemError = true

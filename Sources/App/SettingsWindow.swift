@@ -1,8 +1,6 @@
 import AppKit
 import SwiftUI
 
-enum SettingsTab: Hashable { case general, tryIt, language }
-
 struct SettingsView: View {
     @ObservedObject var state: AppState
     var onOpenAccessibility: () -> Void

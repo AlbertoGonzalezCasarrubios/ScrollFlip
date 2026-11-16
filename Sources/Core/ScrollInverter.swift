@@ -71,12 +71,27 @@ final class ScrollInverter {
         self.runLoopSource = nil
     }
 
+    /// Health check, called periodically and after waking from sleep.
+    /// Re-enables the tap if macOS turned it off, or recreates it if it is gone.
+    /// Returns false if it cannot be recreated (Accessibility permission revoked).
+    func ensureRunning() -> Bool {
+        if let tap {
+            if CGEvent.tapIsEnabled(tap: tap) { return true }
+            CGEvent.tapEnable(tap: tap, enable: true)
+            if CGEvent.tapIsEnabled(tap: tap) { return true }
+            stop()
+        }
+        return start()
+    }
+
     /// macOS disables the tap if the callback is too slow; turn it back on.
     fileprivate func reenable() {
         if let tap { CGEvent.tapEnable(tap: tap, enable: true) }
     }
 
-    fileprivate func process(_ event: CGEvent) {
+    /// Reverses / rescales the event in place if it comes from a mouse wheel.
+    /// Internal (not private) so the tests can feed it synthetic events.
+    func process(_ event: CGEvent) {
         // Trackpad and Magic Mouse produce "continuous" (pixel) events.
         // A classic mouse wheel produces discrete (line) events.
         let isContinuous = event.getIntegerValueField(.scrollWheelEventIsContinuous) != 0
@@ -127,7 +142,7 @@ final class ScrollInverter {
     }
 
     /// Scales an integer delta without ever turning a real movement into 0.
-    private static func scaled(_ value: Int64, _ factor: Double) -> Int64 {
+    static func scaled(_ value: Int64, _ factor: Double) -> Int64 {
         guard value != 0 else { return 0 }
         let result = (Double(value) * factor).rounded()
         if result == 0 { return (Double(value) * factor) > 0 ? 1 : -1 }

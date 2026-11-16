@@ -1,0 +1,24 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test-and-build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run tests
+        run: bash scripts/test.sh
+
+      - name: Build universal app
+        run: bash build.sh
+
+      - name: Check binary architectures
+        run: lipo -archs build/ScrollFlip.app/Contents/MacOS/ScrollFlip | grep -q "x86_64 arm64"

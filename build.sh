@@ -2,6 +2,7 @@
 # Builds ScrollFlip.app without Xcode (Command Line Tools are enough).
 #   ./build.sh           -> build/ScrollFlip.app
 #   ./build.sh install   -> also copies it to /Applications and launches it
+#   ./build.sh zip       -> also creates build/ScrollFlip.zip (for releases)
 #
 # Signing: uses the "ScrollFlip Local Signing" certificate if it exists
 # (see scripts/create-signing-cert.sh), so the Accessibility permission
@@ -24,15 +25,21 @@ if [[ -z "$SIGN_ID" ]]; then
     echo "  Run scripts/create-signing-cert.sh once to avoid this."
 fi
 
-rm -rf build
-mkdir -p "$APP/Contents/MacOS"
+rm -rf "$APP" build/obj
+mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources" build/obj
 
-swiftc -O -swift-version 5 \
-    -target arm64-apple-macos13.0 \
-    Sources/*.swift \
-    -o "$APP/Contents/MacOS/ScrollFlip"
+# Universal binary: compile once per architecture, then merge with lipo.
+for ARCH in arm64 x86_64; do
+    swiftc -O -swift-version 5 \
+        -target "$ARCH-apple-macos13.0" \
+        Sources/Core/*.swift Sources/App/*.swift \
+        -o "build/obj/ScrollFlip-$ARCH"
+done
+lipo -create build/obj/ScrollFlip-arm64 build/obj/ScrollFlip-x86_64 \
+    -output "$APP/Contents/MacOS/ScrollFlip"
 
 cp Resources/Info.plist "$APP/Contents/Info.plist"
+cp Resources/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
 
 # Cloud-synced folders (OneDrive, iCloud) add extended attributes that break codesign.
 xattr -cr "$APP"
@@ -42,6 +49,12 @@ codesign --force --options runtime \
     --sign "$SIGN_ID" "$APP"
 
 echo "✔ Built: $APP"
+
+if [[ "${1:-}" == "zip" ]]; then
+    rm -f build/ScrollFlip.zip
+    ditto -c -k --keepParent "$APP" build/ScrollFlip.zip
+    echo "✔ Zipped: build/ScrollFlip.zip"
+fi
 
 if [[ "${1:-}" == "install" ]]; then
     pkill -x ScrollFlip 2>/dev/null || true

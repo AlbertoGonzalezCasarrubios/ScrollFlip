@@ -7,6 +7,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     private lazy var state = AppState(inverter: inverter)
     private var statusItem: NSStatusItem!
     private var permissionTimer: Timer?
+    private var healthTimer: Timer?
     private var settingsWindow: NSWindow?
     private var iconSubscription: AnyCancellable?
 
@@ -33,6 +34,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
             waitForPermission()
         }
 
+        // macOS can silently disable the tap (sleep, user switch, permission revoked).
+        healthTimer = Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { [weak self] _ in
+            self?.checkHealth()
+        }
+        NSWorkspace.shared.notificationCenter.addObserver(
+            self, selector: #selector(checkHealth),
+            name: NSWorkspace.didWakeNotification, object: nil)
+        NSWorkspace.shared.notificationCenter.addObserver(
+            self, selector: #selector(checkHealth),
+            name: NSWorkspace.sessionDidBecomeActiveNotification, object: nil)
+
         if state.consumeFirstLaunch() {
             showSettings(tab: .tryIt)
         }
@@ -47,6 +59,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
                 timer.invalidate()
                 self.state.permissionGranted = true
             }
+        }
+    }
+
+    /// Keeps the tap alive. If it can't be recreated, the permission was revoked:
+    /// show the warning again and wait for it to be granted.
+    @objc private func checkHealth() {
+        guard state.permissionGranted else { return }
+        if !inverter.ensureRunning() {
+            state.permissionGranted = false
+            waitForPermission()
         }
     }
 
@@ -75,6 +97,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         menu.addItem(.separator())
         menu.addItem(item(.launchAtLogin, #selector(toggleLaunchAtLogin), on: state.launchAtLogin))
         menu.addItem(.separator())
+        menu.addItem(item(.about, #selector(showAbout)))
         menu.addItem(item(.quit, #selector(quit), key: "q"))
     }
 
@@ -97,6 +120,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
             NSWorkspace.shared.open(url)
         }
         waitForPermission()
+    }
+
+    @objc private func showAbout() {
+        let repo = "https://github.com/AlbertoGonzalezCasarrubios/ScrollFlip"
+        let credits = NSMutableAttributedString(
+            string: "\(state.t(.aboutTagline))\n\nMIT License\n",
+            attributes: [.font: NSFont.systemFont(ofSize: 11), .foregroundColor: NSColor.secondaryLabelColor])
+        credits.append(NSAttributedString(
+            string: "github.com/AlbertoGonzalezCasarrubios/ScrollFlip",
+            attributes: [.font: NSFont.systemFont(ofSize: 11), .link: URL(string: repo)!]))
+        let centered = NSMutableParagraphStyle()
+        centered.alignment = .center
+        credits.addAttribute(.paragraphStyle, value: centered, range: NSRange(location: 0, length: credits.length))
+
+        NSApp.activate(ignoringOtherApps: true)
+        NSApp.orderFrontStandardAboutPanel(options: [.credits: credits])
     }
 
     @objc private func quit() {
