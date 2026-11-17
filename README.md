@@ -147,7 +147,7 @@ scripts/test.sh        # unit tests (no permissions needed)
 scripts/make-icon.sh   # regenerate Resources/AppIcon.icns
 ```
 
-CI runs the tests and a universal build on every push. To publish a release, bump `CFBundleShortVersionString` in `Resources/Info.plist`, then push a matching tag:
+CI runs the tests and a universal build on every push. To publish a release, bump `CFBundleShortVersionString` in `Resources/Info.plist`, add a matching section to [CHANGELOG.md](CHANGELOG.md), then push a matching tag:
 
 ```bash
 git tag v1.0.1 && git push origin v1.0.1
