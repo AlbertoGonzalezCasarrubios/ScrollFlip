@@ -178,7 +178,9 @@ final class AutoScroller {
         remainder.x -= dx
         remainder.y -= dy
         if dx != 0 || dy != 0 {
-            postScroll(Int32(dx), Int32(dy), anchor)
+            // Post at the CURRENT pointer position. Using the anchor here would
+            // make macOS warp the cursor back to it on every tick.
+            postScroll(Int32(dx), Int32(dy), pointer)
         }
     }
 
@@ -210,12 +212,14 @@ final class AutoScroller {
 
     // MARK: Posting events
 
+    /// Posted at the session level: HID-level events with a location move the
+    /// real cursor, which would fight the user's hand.
     static func postScrollEvent(dx: Int32, dy: Int32, at location: CGPoint) {
         guard let event = CGEvent(scrollWheelEvent2Source: nil, units: .pixel, wheelCount: 2,
                                   wheel1: dy, wheel2: dx, wheel3: 0) else { return }
         event.setIntegerValueField(.eventSourceUserData, value: SyntheticEvent.marker)
         event.location = location
-        event.post(tap: .cghidEventTap)
+        event.post(tap: .cgSessionEventTap)
     }
 
     static func postMiddleClick(at location: CGPoint) {

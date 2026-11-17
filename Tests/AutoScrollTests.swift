@@ -6,6 +6,7 @@ private final class Harness {
     var pointer = CGPoint(x: 500, y: 500)
     var cursorIsHand = false
     var scrolls: [(dx: Int32, dy: Int32)] = []
+    var scrollLocations: [CGPoint] = []
     var replays: [CGPoint] = []
     var starts: [CGPoint] = []
     var stops = 0
@@ -15,7 +16,10 @@ private final class Harness {
         scroller.usesTimer = false
         scroller.pointerLocation = { [unowned self] in self.pointer }
         scroller.cursorIsPointingHand = { [unowned self] in self.cursorIsHand }
-        scroller.postScroll = { [unowned self] dx, dy, _ in self.scrolls.append((dx, dy)) }
+        scroller.postScroll = { [unowned self] dx, dy, at in
+            self.scrolls.append((dx, dy))
+            self.scrollLocations.append(at)
+        }
         scroller.replayClick = { [unowned self] in self.replays.append($0) }
         scroller.onStart = { [unowned self] in self.starts.append($0) }
         scroller.onStop = { [unowned self] in self.stops += 1 }
@@ -131,6 +135,17 @@ func autoScrollTests() {
         h.ticks(30)
         expect(h.totalScroll.dx < 0, "negative horizontal delta = scroll right, got \(h.totalScroll.dx)")
         expectEqual(h.totalScroll.dy, 0, "no vertical movement")
+    }
+
+    test("scroll events are posted at the pointer, never at the anchor") {
+        // Regression: posting at the anchor warped the cursor back to it on every tick.
+        let h = Harness(mode: .clickAndMove)
+        _ = h.scroller.middleDown(at: anchor)
+        _ = h.scroller.middleUp(at: anchor)
+        h.pointer = CGPoint(x: 520, y: 700)
+        h.ticks(5)
+        expect(!h.scrollLocations.isEmpty, "something was posted")
+        expect(h.scrollLocations.allSatisfy { $0 == h.pointer }, "posted at \(h.scrollLocations)")
     }
 
     test("inside the dead zone nothing is posted") {
