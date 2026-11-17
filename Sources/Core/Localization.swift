@@ -32,6 +32,11 @@ enum L: CaseIterable {
     // Side buttons
     case sectionButtons, sideButtonsToggle, swapButtons, sideButtonsNote, sideButtonsPrivacy
     case tryButtonsTitle, tryButtonsIntro, tryBack, tryForward, countdown, tryButtonsDisabled
+    // Autoscroll
+    case sectionAutoScroll, autoScrollToggle, autoScrollMode, modeClickAndMove, modeHoldAndDrag
+    case autoScrollNoteClick, autoScrollNoteHold, autoScrollPrivacy
+    case tryAutoScrollTitle, tryAutoScrollIntro, tryAutoScrollDisabled
+    case cursorNow, cursorHand, cursorOther, hoverHere
     // Language tab
     case languageTitle, languageSystem, languageNote
 
@@ -112,6 +117,29 @@ enum L: CaseIterable {
         case .countdown: return ("Cambia de app…", "Switch apps…")
         case .tryButtonsDisabled: return ("Activa «Botones 4 y 5» en General para probarlo.",
                                           "Turn on “Buttons 4 and 5” in General to try it.")
+        case .sectionAutoScroll: return ("Autodesplazamiento (pulsar la rueda)", "Autoscroll (wheel click)")
+        case .autoScrollToggle: return ("Activar autodesplazamiento", "Enable autoscroll")
+        case .autoScrollMode: return ("Modo", "Mode")
+        case .modeClickAndMove: return ("Clic y mover (como Windows)", "Click and move (like Windows)")
+        case .modeHoldAndDrag: return ("Mantener y arrastrar", "Hold and drag")
+        case .autoScrollNoteClick:
+            return ("Pulsa la rueda y mueve el ratón; cualquier clic lo detiene. Sobre un enlace (cursor 👆) la rueda lo abre en otra pestaña como siempre. Cerrar pestañas con la rueda deja de funcionar en este modo. Mantener pulsada la rueda y arrastrar también funciona.",
+                    "Click the wheel and move the mouse; any click stops it. Over a link (👆 cursor) the wheel opens it in a new tab as usual. Closing tabs with the wheel stops working in this mode. Holding the wheel and dragging also works.")
+        case .autoScrollNoteHold:
+            return ("Mantén pulsada la rueda y arrastra; al soltarla se detiene. Un clic normal con la rueda sigue funcionando en todas partes.",
+                    "Hold the wheel down and drag; release it to stop. A normal wheel click keeps working everywhere.")
+        case .autoScrollPrivacy:
+            return ("Al activarlo, ScrollFlip recibe los clics de la rueda. Solo mientras el autodesplazamiento está en marcha consulta la posición del puntero y detecta clics para detenerlo.",
+                    "When on, ScrollFlip receives wheel clicks. Only while autoscroll is running does it read the pointer position and watch for clicks to stop it.")
+        case .tryAutoScrollTitle: return ("Autodesplazamiento", "Autoscroll")
+        case .tryAutoScrollIntro: return ("Pulsa la rueda sobre la lista de filas y mueve el ratón.",
+                                          "Click the wheel over the list of rows and move the mouse.")
+        case .tryAutoScrollDisabled: return ("Activa el autodesplazamiento en General para probarlo.",
+                                             "Turn on autoscroll in General to try it.")
+        case .cursorNow: return ("Cursor ahora:", "Cursor now:")
+        case .cursorHand: return ("manita 👆 (enlace)", "pointing hand 👆 (link)")
+        case .cursorOther: return ("normal", "normal")
+        case .hoverHere: return ("Pasa el ratón por aquí", "Hover here")
         case .languageTitle: return ("Idioma de la app", "App language")
         case .languageSystem: return ("Igual que el sistema", "Same as system")
         case .languageNote: return ("El cambio se aplica al instante en el menú y en esta ventana.",

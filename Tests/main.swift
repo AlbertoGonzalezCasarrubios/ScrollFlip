@@ -4,6 +4,7 @@ print("ScrollFlip tests")
 
 suite("ScrollInverter", scrollInverterTests)
 suite("SideButtons", sideButtonTests)
+suite("AutoScroll", autoScrollTests)
 suite("AppState", appStateTests)
 suite("Localization", localizationTests)
 

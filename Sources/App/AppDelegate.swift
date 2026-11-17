@@ -10,9 +10,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     private var healthTimer: Timer?
     private var settingsWindow: NSWindow?
     private var iconSubscription: AnyCancellable?
+    private let anchorOverlay = AnchorOverlay()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         state.sideButtons.frontmostBundleID = { NSWorkspace.shared.frontmostApplication?.bundleIdentifier }
+        state.autoScroller.cursorIsPointingHand = CursorProbe.isPointingHand
+        state.autoScroller.onStart = { [weak self] anchor in self?.anchorOverlay.show(atQuartz: anchor) }
+        state.autoScroller.onStop = { [weak self] in self?.anchorOverlay.hide() }
+        // Like Windows: switching apps ends autoscroll.
+        NSWorkspace.shared.notificationCenter.addObserver(
+            self, selector: #selector(frontmostAppChanged),
+            name: NSWorkspace.didActivateApplicationNotification, object: nil)
 
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         let image = NSImage(systemSymbolName: "computermouse", accessibilityDescription: "ScrollFlip")
@@ -74,6 +82,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
             return
         }
         if state.sideButtonsEnabled { _ = state.sideButtons.ensureRunning() }
+        if state.autoScrollEnabled { _ = state.autoScroller.ensureRunning() }
+    }
+
+    @objc private func frontmostAppChanged() {
+        state.autoScroller.cancel()
     }
 
     // MARK: - Menu (rebuilt every time it opens, so it always reflects the real state)

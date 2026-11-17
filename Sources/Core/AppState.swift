@@ -24,6 +24,7 @@ final class AppState: ObservableObject {
 
     let inverter: ScrollInverter
     let sideButtons: SideButtonMapper
+    let autoScroller: AutoScroller
     private let defaults: UserDefaults
     private let loginItem: LoginItemControlling
 
@@ -35,6 +36,8 @@ final class AppState: ObservableObject {
         static let language = "language"
         static let sideButtons = "sideButtons"
         static let swapSideButtons = "swapSideButtons"
+        static let autoScroll = "autoScroll"
+        static let autoScrollMode = "autoScrollMode"
         static let didShowWelcome = "didShowDemo"
     }
 
@@ -57,6 +60,13 @@ final class AppState: ObservableObject {
     @Published var swapSideButtons: Bool {
         didSet { defaults.set(swapSideButtons, forKey: Key.swapSideButtons); sideButtons.swapButtons = swapSideButtons }
     }
+    /// Off by default: when off, ScrollFlip has no tap on the middle button.
+    @Published var autoScrollEnabled: Bool {
+        didSet { defaults.set(autoScrollEnabled, forKey: Key.autoScroll); applyAutoScroll() }
+    }
+    @Published var autoScrollMode: AutoScrollMode {
+        didSet { defaults.set(autoScrollMode.rawValue, forKey: Key.autoScrollMode); autoScroller.mode = autoScrollMode }
+    }
     @Published var language: Language {
         didSet { defaults.set(language.rawValue, forKey: Key.language) }
     }
@@ -64,7 +74,7 @@ final class AppState: ObservableObject {
     @Published private(set) var launchAtLogin = false
     @Published var loginItemError = false
     @Published var permissionGranted = false {
-        didSet { applySideButtons() }
+        didSet { applySideButtons(); applyAutoScroll() }
     }
     @Published var selectedTab = SettingsTab.general
 
@@ -76,10 +86,12 @@ final class AppState: ObservableObject {
 
     init(inverter: ScrollInverter,
          sideButtons: SideButtonMapper = SideButtonMapper(),
+         autoScroller: AutoScroller = AutoScroller(),
          defaults: UserDefaults = .standard,
          loginItem: LoginItemControlling = SystemLoginItem()) {
         self.inverter = inverter
         self.sideButtons = sideButtons
+        self.autoScroller = autoScroller
         self.defaults = defaults
         self.loginItem = loginItem
         defaults.register(defaults: [
@@ -90,6 +102,8 @@ final class AppState: ObservableObject {
             Key.language: Language.system.rawValue,
             Key.sideButtons: false,
             Key.swapSideButtons: false,
+            Key.autoScroll: false,
+            Key.autoScrollMode: AutoScrollMode.clickAndMove.rawValue,
         ])
         enabled = defaults.bool(forKey: Key.enabled)
         invertVertical = defaults.bool(forKey: Key.vertical)
@@ -99,6 +113,8 @@ final class AppState: ObservableObject {
         language = Language(rawValue: defaults.string(forKey: Key.language) ?? "") ?? .system
         sideButtonsEnabled = defaults.bool(forKey: Key.sideButtons)
         swapSideButtons = defaults.bool(forKey: Key.swapSideButtons)
+        autoScrollEnabled = defaults.bool(forKey: Key.autoScroll)
+        autoScrollMode = AutoScrollMode(rawValue: defaults.string(forKey: Key.autoScrollMode) ?? "") ?? .clickAndMove
 
         // didSet does not run inside init, so sync the inverter by hand.
         inverter.isEnabled = enabled
@@ -106,7 +122,17 @@ final class AppState: ObservableObject {
         inverter.invertHorizontal = invertHorizontal
         inverter.speed = speed
         sideButtons.swapButtons = swapSideButtons
+        autoScroller.mode = autoScrollMode
         refreshLaunchAtLogin()
+    }
+
+    /// The middle-button tap only exists while autoscroll is on and permitted.
+    private func applyAutoScroll() {
+        if autoScrollEnabled && permissionGranted {
+            autoScroller.start()
+        } else {
+            autoScroller.stopTap()
+        }
     }
 
     /// The side-button tap only exists while the feature is on and permitted.

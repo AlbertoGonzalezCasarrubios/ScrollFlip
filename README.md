@@ -24,6 +24,7 @@ macOS has a single "Natural scrolling" switch, and it applies to both the trackp
 - **Mouse only.** The trackpad and the Magic Mouse keep the system behaviour.
 - **Adjustable wheel speed**, from 0.5× to 4×, with the system speed as the default.
 - **Optional Back / Forward on side buttons 4 and 5**, off by default. It works in Safari and Finder, and you can test it without side buttons.
+- **Optional Windows-style autoscroll**, off by default. Click the wheel and move the mouse to scroll; a wheel click on a link still opens it in a new tab.
 - **"Try it" tab** that shows live what happens to each scroll event.
 - **English and Spanish UI**, switchable at any time.
 - **Self-healing.** If macOS disables it (after sleep, a user switch, or a revoked permission), it recovers or tells you.
@@ -32,7 +33,7 @@ macOS has a single "Natural scrolling" switch, and it applies to both the trackp
 
 ### Privacy by design
 
-- It only listens to scroll-wheel events. It never sees keystrokes, left/right clicks or pointer movement. If you turn on the side-button option, it also receives clicks from the *extra* mouse buttons, and only while that option is on.
+- It only listens to scroll-wheel events. It never sees keystrokes, left/right clicks or pointer movement. If you turn on the side-button or autoscroll options, it also receives clicks from the *extra* mouse buttons (side buttons, wheel click), and only while those options are on.
 - It is sandboxed, with **no network entitlement**, so it cannot connect to the internet.
 - It never stores or logs events.
 - It has no third-party dependencies.
@@ -80,8 +81,8 @@ Click the mouse icon in the menu bar:
 
 The settings window has three tabs:
 
-- **General**: on/off, reversed axes, wheel speed (0.5× to 4×, with a *Reset* button back to the default 1×), side buttons and launch at login.
-- **Try it**: scroll with the mouse and with the trackpad to see the original event, the event apps receive, and whether it was reversed. You can also fire a simulated side-button click, so you can check Back/Forward without a mouse that has side buttons.
+- **General**: on/off, reversed axes, wheel speed (0.5× to 4×, with a *Reset* button back to the default 1×), side buttons, autoscroll and launch at login.
+- **Try it**: scroll with the mouse and with the trackpad to see the original event, the event apps receive, and whether it was reversed. You can also fire a simulated side-button click, so you can check Back/Forward without a mouse that has side buttons, try autoscroll on the list of rows, and see live whether the link cursor is detected.
 - **Language**: system default, English or Spanish.
 
 ### Side buttons (Back / Forward)
@@ -94,6 +95,19 @@ Turn on **Buttons 4 and 5: Back / Forward** in *General*. It works per app:
 | Chrome, Edge, Arc, VS Code and others | Leaves the button alone, because these apps already map buttons 4/5 to Back/Forward. |
 
 *Swap buttons* exchanges Back and Forward, for mice that label them the other way round.
+
+### Autoscroll (wheel click)
+
+Turn on **Enable autoscroll** in *General* and choose a mode:
+
+| Mode | How it works | Wheel click on a link |
+|---|---|---|
+| **Click and move** (default, like Windows) | Click the wheel, then move the mouse: the farther from the anchor, the faster it scrolls, in any direction. Any click stops it. Holding the wheel and dragging also works. | Opens the link in a new tab, as usual. |
+| **Hold and drag** | Hold the wheel and drag. Releasing it stops. | Works everywhere, because a click without a drag is passed on unchanged. |
+
+A small anchor icon marks where you started. Switching apps also stops autoscroll.
+
+**How links are detected.** ScrollFlip has no access to the page, so it looks at the cursor's shape. If it is the pointing hand 👆, the wheel click goes through normally. This is also why, in *Click and move* mode, middle-clicking a browser tab to close it no longer works: over a tab the cursor is a normal arrow. Use *Hold and drag* if you rely on that.
 
 ### Natural scrolling
 
@@ -120,6 +134,8 @@ Then grant the permission again. If you build from source and `build.sh` printed
 - **The Magic Mouse is treated as a trackpad**, because it also sends continuous events. This is usually what you want.
 - **Back/Forward does not work in a few Apple apps** that ignore the swipe gesture, such as System Settings and the App Store. It also does nothing in apps that understand neither the gesture nor buttons 4/5.
 - **The swipe gesture uses undocumented event fields**, the same ones LinearMouse, Mac Mouse Fix and SensibleSideButtons use. A future macOS could change them.
+- **Autoscroll scrolls the window under the pointer.** If you move the pointer far outside the window you started in, another window may scroll.
+- **Autoscroll cannot change the system cursor**, as Windows does. The floating anchor icon is shown instead.
 - **Speeds below 1×** are fully smooth in apps that use pixel deltas, which covers most modern apps. Apps that only read whole lines still move at least one line per notch.
 
 ## Development

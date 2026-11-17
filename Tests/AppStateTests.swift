@@ -37,6 +37,9 @@ func appStateTests() {
             expectEqual(state.launchAtLogin, false, "launchAtLogin")
             expectEqual(state.sideButtonsEnabled, false, "side buttons off by default")
             expectEqual(state.sideButtons.isRunning, false, "no button tap by default")
+            expectEqual(state.autoScrollEnabled, false, "autoscroll off by default")
+            expectEqual(state.autoScrollMode, .clickAndMove, "Windows-style mode by default")
+            expectEqual(state.autoScroller.isRunning, false, "no middle-button tap by default")
             expectEqual(inverter.speed, AppState.defaultSpeed, "inverter speed synced")
         }
     }
@@ -64,6 +67,7 @@ func appStateTests() {
             first.speed = 1.5
             first.language = .english
             first.swapSideButtons = true
+            first.autoScrollMode = .holdAndDrag
 
             let inverter = ScrollInverter()
             let relaunched = AppState(inverter: inverter, defaults: defaults, loginItem: FakeLoginItem())
@@ -73,6 +77,8 @@ func appStateTests() {
             expectEqual(relaunched.language, .english, "language")
             expectEqual(relaunched.swapSideButtons, true, "swapSideButtons")
             expectEqual(relaunched.sideButtons.swapButtons, true, "mapper synced on launch")
+            expectEqual(relaunched.autoScrollMode, .holdAndDrag, "autoScrollMode")
+            expectEqual(relaunched.autoScroller.mode, .holdAndDrag, "scroller synced on launch")
             expectEqual(inverter.isEnabled, false, "inverter synced on launch")
             expectEqual(inverter.speed, 1.5, "inverter speed synced on launch")
         }
@@ -82,9 +88,11 @@ func appStateTests() {
         withTemporaryDefaults { defaults in
             defaults.set(7.3, forKey: AppState.Key.speed)
             defaults.set("klingon", forKey: AppState.Key.language)
+            defaults.set("sideways", forKey: AppState.Key.autoScrollMode)
             let state = AppState(inverter: ScrollInverter(), defaults: defaults, loginItem: FakeLoginItem())
             expectEqual(state.speed, AppState.defaultSpeed, "speed")
             expectEqual(state.language, .system, "language")
+            expectEqual(state.autoScrollMode, .clickAndMove, "autoScrollMode")
         }
     }
 
@@ -129,7 +137,9 @@ func appStateTests() {
         withTemporaryDefaults { defaults in
             let state = AppState(inverter: ScrollInverter(), defaults: defaults, loginItem: FakeLoginItem())
             state.sideButtonsEnabled = true
+            state.autoScrollEnabled = true
             expectEqual(state.sideButtons.isRunning, false, "permission not granted yet")
+            expectEqual(state.autoScroller.isRunning, false, "autoscroll: permission not granted yet")
             state.sideButtonsEnabled = false
             expectEqual(state.sideButtons.isRunning, false, "turned off")
         }

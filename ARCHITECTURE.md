@@ -9,12 +9,14 @@ Sources/
   Core/                    Logic, no UI. Compiled into both the app and the tests.
     ScrollInverter.swift   CGEventTap: detects mouse-wheel events, reverses and scales them
     SideButtons.swift      Optional tap for buttons 4/5 → Back/Forward (swipe gesture)
+    AutoScroll.swift       Optional Windows-style autoscroll state machine + taps
     AppState.swift         Settings (UserDefaults), launch at login, live demo samples
     Localization.swift     Language enum and every UI string (es / en)
   App/                     UI and entry point. Compiled only into the app.
     main.swift             NSApplication in .accessory mode (no Dock icon)
     AppDelegate.swift      Menu bar item, menu, permission flow, health checks, About
     SettingsWindow.swift   SwiftUI window: General · Try it · Language tabs
+    AutoScrollUI.swift     Floating anchor overlay, pointing-hand cursor detection
 Tests/                     Dependency-free test runner and test suites
 Resources/
   Info.plist               LSUIElement, bundle id, version, icon
@@ -46,6 +48,7 @@ flowchart LR
         State["AppState<br/>ObservableObject"]
         Inverter["ScrollInverter<br/>(CGEventTap)"]
         Buttons["SideButtonMapper<br/>(CGEventTap, optional)"]
+        Auto["AutoScroller<br/>(CGEventTap, optional)"]
         Strings["Localization"]
     end
 
@@ -57,10 +60,12 @@ flowchart LR
     State -- "didSet: persist" --> Defaults
     State -- "didSet: push settings" --> Inverter
     State -- "start / stop tap" --> Buttons
+    State -- "start / stop tap" --> Auto
     State --> Login
     State --> Strings
     Health -- "ensureRunning()" --> Inverter
     Health -- "ensureRunning()" --> Buttons
+    Health -- "ensureRunning()" --> Auto
     Inverter -. "ScrollSample<br/>(only while window is open)" .-> State
     State -- "@Published" --> Window
 ```
@@ -130,6 +135,50 @@ flowchart TD
 - **The swipe gesture.** A gesture event (type 29) with the undocumented fields 110 = 16 (navigation swipe), 132 = phase (1 began, 4 ended) and 115 = direction (4 left = Back, 8 right = Forward, only on the ended event). It is posted to the HID event tap. These are the values SensibleSideButtons uses.
 - **Testing without side buttons.** `simulateClick(_:)` posts a synthetic button 4/5 click at the pointer. It goes through the same tap and the same logic as a physical button. The *Try it* tab uses it after a 3-second countdown, which gives you time to switch to Safari or Finder.
 
+## Autoscroll (wheel click)
+
+On Windows, autoscroll is implemented **inside each app**. The browser knows whether a link is under the pointer, so it can decide between "open in new tab" and "autoscroll". ScrollFlip lives outside the apps, so it uses the only signal that needs no access to their content: **the cursor's shape**. `CursorProbe` compares `NSCursor.currentSystem` with `NSCursor.pointingHand` (image data, or the relative hot spot and aspect ratio for enlarged cursors).
+
+`AutoScroller` is a pure state machine. The pointer position, cursor check, event posting and overlay are injected closures.
+
+```mermaid
+stateDiagram-v2
+    [*] --> Idle
+    Idle --> PassingThrough: wheel down over 👆 (click & move)
+    PassingThrough --> Idle: wheel up (both passed to the app)
+
+    Idle --> Active: wheel down (click & move)
+    Idle --> Pending: wheel down (hold & drag)
+    Pending --> Idle: wheel up without drag → replay the click
+    Pending --> Active: drag > 6 pt
+
+    Active --> Toggled: wheel up, not dragged (click & move)
+    Active --> Idle: wheel up after a drag
+    Toggled --> SwallowingUp: any click (wheel, left, right)
+    SwallowingUp --> Idle: matching up swallowed
+
+    Active --> Idle: app switch (cancel)
+    Toggled --> Idle: app switch (cancel)
+```
+
+While *Active* or *Toggled*, a 60 Hz timer:
+
+1. reads the pointer position;
+2. computes a speed per axis with `velocity(offset:)`, which has a 10 pt dead zone, grows as `1.8 · d^1.4` and is capped at 6000 px/s;
+3. accumulates the fractional pixels, so slow speeds aren't lost;
+4. posts pixel scroll events.
+
+Pointer below or right of the anchor scrolls down or right. Synthetic events are not affected by "natural scrolling", so the direction is always the Windows one.
+
+### Taps and synthetic events
+
+| Tap | Mask | Exists |
+|---|---|---|
+| Middle button | `otherMouseDown / Dragged / Up` (button 2 only is acted on) | while autoscroll is enabled |
+| Exit clicks | `left/rightMouseDown / Up` | only while toggled autoscroll is running |
+
+Every event ScrollFlip posts itself (autoscroll ticks, replayed wheel clicks) carries `eventSourceUserData = "SCRL"` (`SyntheticEvent.marker`). The scroll and middle-button taps ignore marked events, so ScrollFlip never reverses its own autoscroll and never re-captures a click it replayed.
+
 ## Permission and self-healing
 
 ```mermaid
@@ -187,6 +236,7 @@ The key trick is that `CGEvent(scrollWheelEvent2Source:…)` creates real scroll
 |---|---|
 | ScrollInverter | reversal on all three fields, trackpad untouched, disabled / default no-ops, horizontal axis, speed scaling, rounding never yields 0, demo observer |
 | SideButtons | per-app strategy, button mapping and swap, swallowing the matching button-up, pass-through for other buttons and apps, swipe event fields |
+| AutoScroll | velocity curve and dead zone, both modes, link pass-through, click replay, stop by any click with swallowed ups, direction on both axes, fractional accumulation, cancel, synthetic-event marker |
 | AppState | defaults, side-button tap never started without permission, settings pushed to the inverter, persistence across relaunch, corrupted values, first-launch flag, launch-at-login success and failure, demo samples |
 | Localization | every string in both languages, language resolution, stable persisted raw values |
 
@@ -208,6 +258,7 @@ Both workflows run on `macos-15` GitHub runners. Release builds are ad-hoc signe
 | Measure | Effect |
 |---|---|
 | Event mask = `scrollWheel` only | The process never receives keys, clicks or pointer movement. |
+| Autoscroll taps are opt-in | The middle-button tap exists only while autoscroll is on. The left/right-click tap and pointer polling run only while autoscroll is actively scrolling. The link check reads the cursor shape only. |
 | Side-button tap is opt-in | Only `otherMouseDown/Up`, created only while the option is on. Left/right clicks are never seen. |
 | `app-sandbox`, no `network.client` | The OS blocks all network connections. The About link opens in the user's browser, not in the app. |
 | No third-party code | Only Apple frameworks: AppKit, SwiftUI, Combine, CoreGraphics, ServiceManagement. |

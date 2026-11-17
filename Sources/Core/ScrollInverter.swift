@@ -163,7 +163,8 @@ private func scrollCallback(
     case .tapDisabledByTimeout, .tapDisabledByUserInput:
         inverter.reenable()
     case .scrollWheel:
-        inverter.process(event)
+        // Autoscroll ticks are ScrollFlip's own events: never reverse them.
+        if !SyntheticEvent.isOurs(event) { inverter.process(event) }
     default:
         break
     }

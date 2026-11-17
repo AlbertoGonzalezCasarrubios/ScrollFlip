@@ -30,7 +30,7 @@ struct SettingsView: View {
             }
         }
         .padding(16)
-        .frame(width: 560, height: 680)
+        .frame(width: 580, height: 740)
     }
 }
 
@@ -105,6 +105,22 @@ private struct GeneralTab: View {
                 .fixedSize(horizontal: false, vertical: true)
             }
 
+            Section(state.t(.sectionAutoScroll)) {
+                Toggle(state.t(.autoScrollToggle), isOn: $state.autoScrollEnabled)
+                Picker(state.t(.autoScrollMode), selection: $state.autoScrollMode) {
+                    Text(state.t(.modeClickAndMove)).tag(AutoScrollMode.clickAndMove)
+                    Text(state.t(.modeHoldAndDrag)).tag(AutoScrollMode.holdAndDrag)
+                }
+                .disabled(!state.autoScrollEnabled)
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(state.autoScrollMode == .clickAndMove ? state.t(.autoScrollNoteClick) : state.t(.autoScrollNoteHold))
+                    Label(state.t(.autoScrollPrivacy), systemImage: "lock.shield")
+                }
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            }
+
             Section(state.t(.sectionStartup)) {
                 Toggle(state.t(.launchAtLogin), isOn: Binding(
                     get: { state.launchAtLogin },
@@ -160,7 +176,12 @@ private struct TryTab: View {
             .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.secondary.opacity(0.25)))
             .clipShape(RoundedRectangle(cornerRadius: 10))
 
-            SideButtonTrial(state: state)
+            HStack(alignment: .top, spacing: 16) {
+                SideButtonTrial(state: state)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                AutoScrollTrial(state: state)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
 
             Label(state.t(.privacyNote), systemImage: "lock.shield")
                 .font(.footnote)
@@ -212,6 +233,36 @@ private struct SideButtonTrial: View {
                 countdown = current - 1
                 tick(direction)
             }
+        }
+    }
+}
+
+private struct AutoScrollTrial: View {
+    @ObservedObject var state: AppState
+    @State private var hovering = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(state.t(.tryAutoScrollTitle)).font(.headline)
+            Text(state.autoScrollEnabled ? state.t(.tryAutoScrollIntro) : state.t(.tryAutoScrollDisabled))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            // Live check of the link detection used by "click and move".
+            TimelineView(.periodic(from: .now, by: 0.25)) { _ in
+                HStack(spacing: 4) {
+                    Text(state.t(.cursorNow))
+                    Text(CursorProbe.isPointingHand() ? state.t(.cursorHand) : state.t(.cursorOther)).bold()
+                }
+                .font(.caption)
+            }
+            Text(state.t(.hoverHere))
+                .font(.caption)
+                .underline()
+                .foregroundStyle(Color.accentColor)
+                .onHover { inside in
+                    if inside { NSCursor.pointingHand.push() } else { NSCursor.pop() }
+                }
         }
     }
 }
