@@ -59,6 +59,10 @@ final class AutoScroller {
 
     private var timer: Timer?
     private var remainder = (x: 0.0, y: 0.0)
+    /// While the wheel is held, the swallowed drag events are the only reliable
+    /// source of the pointer position (the session's "current location" is not
+    /// updated by events a tap drops).
+    private var dragLocation: CGPoint?
     private var buttonTap: CFMachPort?
     private var buttonSource: CFRunLoopSource?
     private var exitTap: CFMachPort?
@@ -96,6 +100,12 @@ final class AutoScroller {
 
     func middleDragged(to point: CGPoint) -> Bool {
         switch state {
+        case .pending, .active:
+            dragLocation = point
+        default:
+            break
+        }
+        switch state {
         case .pending(let anchor):
             if distance(point, anchor) > Self.dragThreshold { start(anchor: anchor, moved: true) }
             return true
@@ -126,6 +136,7 @@ final class AutoScroller {
             return true
         case .active(let anchor, toggled: false, moved: false) where mode == .clickAndMove:
             state = .active(anchor: anchor, toggled: true, moved: false)
+            dragLocation = nil                 // button released: follow the real pointer
             setExitTap(enabled: true)          // any click will now stop it
             return true
         case .active:
@@ -169,7 +180,7 @@ final class AutoScroller {
     /// (synthetic events are not affected by it).
     func tick(dt: Double) {
         guard case .active(let anchor, _, _) = state else { return }
-        let pointer = pointerLocation()
+        let pointer = dragLocation ?? pointerLocation()
         // Quartz coordinates: y grows downwards. Negative wheel delta = scroll down / right.
         remainder.x -= Self.velocity(offset: Double(pointer.x - anchor.x)) * dt
         remainder.y -= Self.velocity(offset: Double(pointer.y - anchor.y)) * dt
@@ -187,6 +198,7 @@ final class AutoScroller {
     private func start(anchor: CGPoint, moved: Bool = false) {
         state = .active(anchor: anchor, toggled: false, moved: moved)
         remainder = (0, 0)
+        dragLocation = moved ? dragLocation : nil
         onStart(anchor)
         guard usesTimer else { return }
         timer?.invalidate()
@@ -201,6 +213,7 @@ final class AutoScroller {
         let wasScrolling = isScrolling
         timer?.invalidate()
         timer = nil
+        dragLocation = nil
         state = swallowUp ? .swallowingUp : .idle
         if !swallowUp { setExitTap(enabled: false) }
         if wasScrolling { onStop() }

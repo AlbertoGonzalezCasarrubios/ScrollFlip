@@ -28,11 +28,19 @@ fi
 rm -rf "$APP" build/obj
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources" build/obj
 
+# Compile a snapshot: cloud-synced folders (OneDrive, iCloud) can touch files
+# mid-build, which makes swiftc abort with "modified during the build".
+SNAP=$(mktemp -d)
+trap 'rm -rf "$SNAP"' EXIT
+mkdir -p "$SNAP/Core" "$SNAP/App"
+cp Sources/Core/*.swift "$SNAP/Core/"
+cp Sources/App/*.swift "$SNAP/App/"
+
 # Universal binary: compile once per architecture, then merge with lipo.
 for ARCH in arm64 x86_64; do
     swiftc -O -swift-version 5 \
         -target "$ARCH-apple-macos13.0" \
-        Sources/Core/*.swift Sources/App/*.swift \
+        "$SNAP"/Core/*.swift "$SNAP"/App/*.swift \
         -o "build/obj/ScrollFlip-$ARCH"
 done
 lipo -create build/obj/ScrollFlip-arm64 build/obj/ScrollFlip-x86_64 \

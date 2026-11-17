@@ -119,12 +119,38 @@ func autoScrollTests() {
         _ = h.scroller.middleDown(at: anchor)
         _ = h.scroller.middleDragged(to: CGPoint(x: 500, y: 520))
         expectEqual(h.starts.count, 1, "started after threshold")
-        h.pointer = CGPoint(x: 500, y: 380)       // above the anchor
+        _ = h.scroller.middleDragged(to: CGPoint(x: 500, y: 380))   // keep dragging, above the anchor
         h.ticks(30)
         expect(h.totalScroll.dy > 0, "positive wheel delta = page scrolls up, got \(h.totalScroll.dy)")
         _ = h.scroller.middleUp(at: h.pointer)
         expectEqual(h.scroller.state, .idle, "stopped on release")
         expectEqual(h.replays.count, 0, "no replay after a drag")
+    }
+
+    test("while the wheel is held, drag events drive scrolling (session location is stale)") {
+        // Regression: swallowed drag events don't update the session's pointer
+        // location, so reading it while holding the wheel always gave the anchor.
+        for mode in [AutoScrollMode.holdAndDrag, .clickAndMove] {
+            let h = Harness(mode: mode)
+            h.pointer = anchor                          // stale: never updates while held
+            _ = h.scroller.middleDown(at: anchor)
+            _ = h.scroller.middleDragged(to: CGPoint(x: 500, y: 520))
+            _ = h.scroller.middleDragged(to: CGPoint(x: 500, y: 680))
+            h.ticks(30)
+            expect(h.totalScroll.dy < 0, "\(mode): should scroll down, got \(h.totalScroll.dy)")
+            expect(h.scrollLocations.allSatisfy { $0 == CGPoint(x: 500, y: 680) },
+                   "\(mode): posted at the drag position")
+        }
+    }
+
+    test("after releasing in click-and-move, the real pointer drives scrolling again") {
+        let h = Harness(mode: .clickAndMove)
+        _ = h.scroller.middleDown(at: anchor)
+        _ = h.scroller.middleDragged(to: CGPoint(x: 502, y: 503))   // jitter below threshold
+        _ = h.scroller.middleUp(at: anchor)                          // toggles on
+        h.pointer = CGPoint(x: 500, y: 300)
+        h.ticks(30)
+        expect(h.totalScroll.dy > 0, "follows the live pointer upwards, got \(h.totalScroll.dy)")
     }
 
     test("horizontal: pointer to the right scrolls right") {
